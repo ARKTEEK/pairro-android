@@ -1,36 +1,40 @@
-# VertexLink-Android
-> **Warning**
-> 
-> This project is currently a **Work in Progress (WIP)**. Features, protocols, and APIs are subject to change.
+# Pairro for Android
 
-VertexLink-Android is the Android client application for controlling a PC running [VertexLink-Desktop](https://github.com/arkteek/vertexlink-desktop). It allows users to control mouse movements, keyboard inputs, clipboard content, and system volume over secure encrypted network connections.
+Pairro for Android is the Android client application for controlling a PC running [Pairro for Desktop](https://github.com/arkteek/pairro-desktop). It allows users to control mouse movements, keyboard inputs, clipboard content, and system volume over secure encrypted network connections.
 
 ## Features
 
-* **Touchpad & Mouse Control**: Multi-touch gestures, left/right click, and scrolling.
-* **Remote Keyboard**: Send text, shortcuts, and key events to the desktop host.
-* **Clipboard Sync**: Easily transfer copied text between mobile and host OS.
-* **Volume Adjustments**: Control desktop master volume remotely.
+* **Mouse Control**: Real-time cursor movement, left/right clicks, dragging and selection.
+* **Keyboard Input**:
+  * Send keystrokes directly to the host machine.
+  * Create custom key macros (e.g Win+E, Win+R).
+* **Clipboard Synchronization**: Share and sync clipboard text between mobile and desktop devices.
+* **Volume Management**: Adjust host device system volume remotely.
+
+## Security
+
 * **Encrypted Communication**:
-  * **TLS**: Secures TCP-based control commands and metadata.
-  * **dTLS**: Encrypts low-latency UDP packet streams.
-* **ACK Handshake**: Strict pairing process using ACK confirmation to validate authorization before opening network sockets.
+    * TLS: Secure TCP-based control commands and metadata.
+    * dTLS: Encrypts low-latency UDP packet streams.
+* **Strict Access Control**: All unverified attempts from unpaired devices get instantly rejected.
+* **Pairing Process**: Pairing works using ACK keys and a shared token to validate authorization before opening network sockets.
 
 ## Prerequisites
 
 * **Android Device**: Android 8.0 (API level 26) or higher.
-* **VertexLink-Desktop**: The desktop host software running on the target PC. Ensure it is configured and active on the same local network.
+* **Pairro for Desktop**: The desktop host software running on the desired Desktop device. Ensure it is running on the same local network.
 
 ## Getting Started
 
 ### Installation
 
-1. Download the latest `.apk` from the [Releases](https://github.com/arkteek/vertexlink-android/releases) section.
-2. Install the APK on your Android device (ensure installation from unknown sources is allowed if installing manually).
+1. Download the latest `.apk` from the [Releases](https://github.com/arkteek/pairro-android/releases) section.
+2. Install the APK on your Android device (ensure installation from unknown sources is allowed).
 
 ### Pairing & Usage
-
-1. Start **VertexLink-Desktop** on your computer.
-2. Launch **VertexLink-Android**.
-3. Scan for active desktop hosts or enter the PC's IP address.
-4. Execute the ACK pairing request. Once verified by the host, secure TLS (TCP) and dTLS (UDP) streams will initialize automatically.
+1. Launch Pairro on your Android device.
+2. Launch Pairro on your Desktop device.
+3. Turn on Discoverability on both devices.
+4. Select Desktop device you want to pair with on your Android device.
+5. Verify codes match on Android and Desktop devices and accept Android device's pairing request.
+6. After that you will be able to connect to paired Desktop device and control desired peritherals using your Android device.
