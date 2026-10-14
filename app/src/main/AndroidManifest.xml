@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
-    package="com.vertexlink">
+    package="com.pairro">
 
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
@@ -8,9 +8,10 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_CONNECTED_DEVICE" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <uses-permission android:name="android.permission.VIBRATE" />
 
     <application
-        android:name="vertexlink.VertexLinkApp"
+        android:name="pairro.PairroApp"
         android:allowBackup="true"
         android:dataExtractionRules="@xml/data_extraction_rules"
         android:fullBackupContent="@xml/backup_rules"
@@ -18,11 +19,11 @@
         android:label="@string/app_name"
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
-        android:theme="@style/Theme.VertexLink">
+        android:theme="@style/Theme.Pairro">
         <activity
-            android:name="vertexlink.ui.MainActivity"
+            android:name="pairro.ui.MainActivity"
             android:exported="true"
-            android:theme="@style/Theme.VertexLink"
+            android:theme="@style/Theme.Pairro"
             android:windowSoftInputMode="adjustResize">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
@@ -32,7 +33,7 @@
         </activity>
 
         <service
-            android:name="vertexlink.service.ConnectionForegroundService"
+            android:name="pairro.service.ConnectionForegroundService"
             android:exported="false"
             android:foregroundServiceType="connectedDevice" />
     </application>

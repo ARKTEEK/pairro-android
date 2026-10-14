@@ -22,5 +22,5 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "VertexLink"
+rootProject.name = "Pairro"
 include(":app")
