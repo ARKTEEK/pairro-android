@@ -6,6 +6,8 @@ import dagger.assisted.AssistedFactory
 import dagger.assisted.AssistedInject
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.withContext
+import pairro.di.IoDispatcher
+import pairro.network.security.CryptoUtils
 import java.io.BufferedReader
 import java.io.BufferedWriter
 import java.io.IOException
@@ -18,16 +20,20 @@ import java.security.cert.X509Certificate
 import javax.net.ssl.SSLContext
 import javax.net.ssl.SSLSocket
 import javax.net.ssl.X509TrustManager
-import pairro.di.IoDispatcher
 
 class TCPClient @AssistedInject constructor(
   @Assisted private val host: String,
   @Assisted private val port: Int,
   @IoDispatcher private val ioDispatcher: CoroutineDispatcher
 ) {
+
   @AssistedFactory
   interface Factory {
-    fun create(host: String, port: Int): TCPClient
+
+    fun create(
+      host: String,
+      port: Int
+    ): TCPClient
   }
 
   private var socket: SSLSocket? = null
@@ -37,12 +43,25 @@ class TCPClient @AssistedInject constructor(
   @Throws(IOException::class)
   fun connect(timeoutMs: Int = 5000) {
     val sslContext = SSLContext.getInstance("TLS")
-    sslContext.init(null, arrayOf(trustAllManager), SecureRandom())
+    sslContext.init(
+      null,
+      arrayOf(trustAllManager),
+      SecureRandom()
+    )
 
     val sslSocket = sslContext.socketFactory.createSocket() as SSLSocket
-    sslSocket.enabledProtocols = arrayOf("TLSv1.2", "TLSv1.3")
+    sslSocket.enabledProtocols = arrayOf(
+      "TLSv1.2",
+      "TLSv1.3"
+    )
     sslSocket.keepAlive = true
-    sslSocket.connect(InetSocketAddress(host, port), timeoutMs)
+    sslSocket.connect(
+      InetSocketAddress(
+        host,
+        port
+      ),
+      timeoutMs
+    )
     sslSocket.startHandshake()
 
     socket = sslSocket
@@ -63,6 +82,16 @@ class TCPClient @AssistedInject constructor(
   }
 
   @Throws(IOException::class)
+  fun serverCertificateFingerprint(): String? {
+    return try {
+      val certificate = socket?.session?.peerCertificates?.firstOrNull()
+
+      certificate?.let { CryptoUtils.certificateFingerprint(it) }
+    } catch (e: Exception) {
+      null
+    }
+  }
+
   fun receiveLine(timeoutMs: Int? = null): String? {
     val s = socket ?: throw IOException("Not connected")
 
@@ -92,9 +121,20 @@ class TCPClient @AssistedInject constructor(
 
   @SuppressLint("CustomX509TrustManager")
   private companion object {
+
     val trustAllManager = object : X509TrustManager {
-      override fun checkClientTrusted(chain: Array<X509Certificate>, authType: String) {}
-      override fun checkServerTrusted(chain: Array<X509Certificate>, authType: String) {}
+      override fun checkClientTrusted(
+        chain: Array<X509Certificate>,
+        authType: String
+      ) {
+      }
+
+      override fun checkServerTrusted(
+        chain: Array<X509Certificate>,
+        authType: String
+      ) {
+      }
+
       override fun getAcceptedIssuers(): Array<X509Certificate> = emptyArray()
     }
   }

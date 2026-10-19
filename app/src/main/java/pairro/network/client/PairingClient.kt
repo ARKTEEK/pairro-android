@@ -15,7 +15,12 @@ import java.io.IOException
 import java.net.SocketTimeoutException
 
 sealed class PairingResult {
-  data class Accepted(val desktopId: String, val desktopName: String, val pin: String, val token: String) :
+  data class Accepted(
+    val desktopId: String,
+    val desktopName: String,
+    val pin: String,
+    val token: String
+  ) :
     PairingResult()
 
   data class Rejected(val reason: String?) : PairingResult()
@@ -29,8 +34,10 @@ class PairingClient @AssistedInject constructor(
   @IoDispatcher private val ioDispatcher: CoroutineDispatcher,
   @MainDispatcher private val mainDispatcher: CoroutineDispatcher
 ) {
+
   @AssistedFactory
   interface Factory {
+
     fun create(tcpClient: TCPClient): PairingClient
   }
 
@@ -40,11 +47,69 @@ class PairingClient @AssistedInject constructor(
     timeoutMs: Int = 15000
   ): PairingResult = withContext(ioDispatcher) {
     try {
-      val payload = Protocol.encode(
-        "AUTH",
-        mapOf("deviceId" to identity.getId(), "token" to token)
+      val deviceId = identity.getId()
+      val clientNonce = CryptoUtils.generateNonce()
+
+      tcpClient.send(
+        Protocol.encode(
+          "AUTH_INIT",
+          mapOf(
+            "deviceId" to deviceId,
+            "nonce" to clientNonce
+          )
+        )
       )
-      tcpClient.send(payload)
+
+      val challengeLine = tcpClient.receiveLine(timeoutMs)
+        ?: return@withContext PairingResult.TimedOut
+
+      val (challengeType, challengeFields) = Protocol.decode(challengeLine)
+
+      if (challengeType == "AUTH_FAIL") {
+        return@withContext PairingResult.Rejected(challengeFields["reason"])
+      }
+
+      if (challengeType != "AUTH_CHALLENGE") {
+        return@withContext PairingResult.Error("Unexpected auth response: $challengeType")
+      }
+
+      val serverNonce = challengeFields["nonce"].orEmpty()
+      val serverProof = challengeFields["proof"].orEmpty()
+
+      val certificateFingerprint = tcpClient.serverCertificateFingerprint()
+        ?: return@withContext PairingResult.Error("Could not read the desktop certificate")
+
+      val expectedServerProof = CryptoUtils.authProof(
+        token,
+        CryptoUtils.ROLE_SERVER,
+        deviceId,
+        clientNonce,
+        serverNonce,
+        certificateFingerprint
+      )
+
+      if (serverNonce.isEmpty() || !CryptoUtils.proofsMatch(
+          expectedServerProof,
+          serverProof
+        )) {
+        return@withContext PairingResult.Error("Could not verify the desktop. Connection refused.")
+      }
+
+      val clientProof = CryptoUtils.authProof(
+        token,
+        CryptoUtils.ROLE_CLIENT,
+        deviceId,
+        clientNonce,
+        serverNonce,
+        certificateFingerprint
+      )
+
+      tcpClient.send(
+        Protocol.encode(
+          "AUTH_PROOF",
+          mapOf("proof" to clientProof)
+        )
+      )
 
       val resultLine = tcpClient.receiveLine(timeoutMs)
         ?: return@withContext PairingResult.TimedOut
@@ -52,7 +117,13 @@ class PairingClient @AssistedInject constructor(
       val (resultType, resultFields) = Protocol.decode(resultLine)
 
       when (resultType) {
-        "AUTH_OK" -> PairingResult.Accepted(desktopId, "", "", token)
+        "AUTH_OK" -> PairingResult.Accepted(
+          desktopId,
+          "",
+          "",
+          token
+        )
+
         "AUTH_FAIL" -> PairingResult.Rejected(resultFields["reason"])
         else -> PairingResult.Error("Unexpected auth response: $resultType")
       }
@@ -98,7 +169,10 @@ class PairingClient @AssistedInject constructor(
       val remotePublicKey = CryptoUtils.decodePublicKey(remotePublicKeyStr)
         ?: return@withContext PairingResult.Error("Invalid public key from desktop")
 
-      val pin = CryptoUtils.calculatePin(keyPair.private, remotePublicKey)
+      val pin = CryptoUtils.calculatePin(
+        keyPair.private,
+        remotePublicKey
+      )
 
       withContext(mainDispatcher) {
         onPinGenerated(pin)
@@ -116,6 +190,7 @@ class PairingClient @AssistedInject constructor(
           pin,
           decisionFields["token"].orEmpty()
         )
+
         "PAIR_DECISION" -> PairingResult.Rejected(decisionFields["reason"])
         else -> PairingResult.Error("Unexpected decision: $decisionType")
       }

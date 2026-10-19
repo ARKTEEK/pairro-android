@@ -1,6 +1,5 @@
 package pairro.controller
 
-import pairro.network.client.TCPClient
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.withContext
 import pairro.device.DeviceInfo
@@ -9,6 +8,7 @@ import pairro.network.ConnectionSession
 import pairro.network.NetworkConfig
 import pairro.network.client.PairingClient
 import pairro.network.client.PairingResult
+import pairro.network.client.TCPClient
 import pairro.network.client.UDPClient
 import pairro.network.security.CryptoUtils
 import pairro.store.PairedDesktopStore
@@ -33,7 +33,10 @@ class DeviceController @Inject constructor(
     onPinGenerated: (String) -> Unit
   ): PairingResult = withContext(ioDispatcher) {
     try {
-      val client = tcpClientFactory.create(address, networkConfig.tcpPort)
+      val client = tcpClientFactory.create(
+        address,
+        networkConfig.tcpPort
+      )
       client.connect()
 
       session.attachTcpClient(client)
@@ -44,17 +47,22 @@ class DeviceController @Inject constructor(
       if (stored != null) {
         val (storedName, token) = stored
 
-        when (val authResult = pairingClient.authenticate(desktopId, token)) {
+        when (val authResult = pairingClient.authenticate(
+          desktopId,
+          token
+        )) {
           is PairingResult.Accepted -> {
             val sessionKey = CryptoUtils.deriveKeyFromToken(token)
-            openUdpChannel(address, sessionKey)
-            session.markConnected(address, storedName)
+            openUdpChannel(
+              address,
+              sessionKey
+            )
+            session.markConnected(
+              address,
+              storedName
+            )
 
             return@withContext authResult.copy(desktopName = storedName)
-          }
-
-          is PairingResult.Rejected -> {
-            pairedDesktopStore.remove(desktopId)
           }
 
           else -> {
@@ -72,12 +80,22 @@ class DeviceController @Inject constructor(
 
       when (result) {
         is PairingResult.Accepted -> {
-          pairedDesktopStore.save(result.desktopId, result.desktopName, result.token)
+          pairedDesktopStore.save(
+            result.desktopId,
+            result.desktopName,
+            result.token
+          )
 
           val sessionKey = CryptoUtils.deriveKeyFromToken(result.token)
 
-          openUdpChannel(address, sessionKey)
-          session.markConnected(address, result.desktopName)
+          openUdpChannel(
+            address,
+            sessionKey
+          )
+          session.markConnected(
+            address,
+            result.desktopName
+          )
         }
 
         else -> {
@@ -93,8 +111,14 @@ class DeviceController @Inject constructor(
     }
   }
 
-  private fun openUdpChannel(address: String, sessionKey: ByteArray) {
-    val client = udpClientFactory.create(address, networkConfig.udpPort)
+  private fun openUdpChannel(
+    address: String,
+    sessionKey: ByteArray
+  ) {
+    val client = udpClientFactory.create(
+      address,
+      networkConfig.udpPort
+    )
     client.setSessionKey(sessionKey)
 
     session.attachUdpClient(client)
