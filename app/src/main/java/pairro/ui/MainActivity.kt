@@ -86,7 +86,6 @@ class MainActivity : ComponentActivity() {
                 onAddMacro = macroViewModel::addMacro,
                 onDeleteMacro = macroViewModel::deleteMacro,
                 touchpadSensitivity = settingsViewModel.touchpadSensitivity,
-                hapticFeedback = settingsViewModel.hapticFeedback,
                 modifier = Modifier
               )
             }

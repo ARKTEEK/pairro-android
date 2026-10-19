@@ -25,9 +25,6 @@ class SettingsViewModel @Inject constructor(
   var touchpadSensitivity by mutableStateOf(settingsStore.touchpadSensitivity)
     private set
 
-  var hapticFeedback by mutableStateOf(settingsStore.hapticFeedback)
-    private set
-
   var keepScreenOn by mutableStateOf(settingsStore.keepScreenOn)
     private set
 
@@ -49,11 +46,6 @@ class SettingsViewModel @Inject constructor(
   fun updateTouchpadSensitivity(value: Float) {
     touchpadSensitivity = value
     settingsStore.touchpadSensitivity = value
-  }
-
-  fun updateHapticFeedback(value: Boolean) {
-    hapticFeedback = value
-    settingsStore.hapticFeedback = value
   }
 
   fun updateKeepScreenOn(value: Boolean) {

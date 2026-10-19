@@ -148,15 +148,6 @@ fun SettingsScreen(
         SettingsDivider()
 
         SettingsSwitchRow(
-          title = "Haptic feedback",
-          subtitle = "Vibrate on taps and gestures",
-          checked = viewModel.hapticFeedback,
-          onCheckedChange = viewModel::updateHapticFeedback
-        )
-
-        SettingsDivider()
-
-        SettingsSwitchRow(
           title = "Keep screen on",
           subtitle = "Prevent the screen from sleeping while controlling",
           checked = viewModel.keepScreenOn,

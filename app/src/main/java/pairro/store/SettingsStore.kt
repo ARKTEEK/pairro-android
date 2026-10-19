@@ -31,10 +31,6 @@ class SettingsStore @Inject constructor(@ApplicationContext context: Context) {
     get() = prefs.getFloat(KEY_TOUCHPAD_SENSITIVITY, 1.0f)
     set(value) = prefs.edit { putFloat(KEY_TOUCHPAD_SENSITIVITY, value) }
 
-  var hapticFeedback: Boolean
-    get() = prefs.getBoolean(KEY_HAPTIC_FEEDBACK, true)
-    set(value) = prefs.edit { putBoolean(KEY_HAPTIC_FEEDBACK, value) }
-
   var keepScreenOn: Boolean
     get() = prefs.getBoolean(KEY_KEEP_SCREEN_ON, true)
     set(value) = prefs.edit { putBoolean(KEY_KEEP_SCREEN_ON, value) }
