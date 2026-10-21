@@ -29,7 +29,6 @@ class TCPClient @AssistedInject constructor(
 
   @AssistedFactory
   interface Factory {
-
     fun create(
       host: String,
       port: Int
@@ -105,6 +104,10 @@ class TCPClient @AssistedInject constructor(
   }
 
   fun close() {
+    try {
+      socket?.shutdownInput()
+    } catch (_: Exception) {
+    }
     try {
       reader?.close()
     } catch (_: Exception) {

@@ -1,6 +1,8 @@
 package pairro.controller
 
 import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import pairro.device.DeviceInfo
 import pairro.di.IoDispatcher
@@ -125,6 +127,8 @@ class DeviceController @Inject constructor(
   }
 
   fun disconnect() {
-    session.closeAll()
+    CoroutineScope(ioDispatcher).launch {
+      session.closeAll()
+    }
   }
 }

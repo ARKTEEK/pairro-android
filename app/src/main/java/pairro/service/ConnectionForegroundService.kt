@@ -27,6 +27,7 @@ import pairro.network.ConnectionSession
 import pairro.protocol.Protocol
 import pairro.ui.MainActivity
 import javax.inject.Inject
+import kotlin.time.Duration.Companion.milliseconds
 
 @AndroidEntryPoint
 class ConnectionForegroundService : Service() {
@@ -43,6 +44,7 @@ class ConnectionForegroundService : Service() {
 
   private val serviceScope = CoroutineScope(SupervisorJob())
   private var keepAliveJob: Job? = null
+  private var readJob: Job? = null
 
   override fun onBind(intent: Intent?): IBinder? = null
 
@@ -71,20 +73,19 @@ class ConnectionForegroundService : Service() {
     }
 
     startKeepAlive()
+    startListening()
 
     return START_STICKY
   }
 
   private fun startForegroundWithNotification(deviceName: String): Boolean {
-    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-      val channel = NotificationChannel(
-        CHANNEL_ID,
-        getString(R.string.connection_channel_name),
-        NotificationManager.IMPORTANCE_LOW
-      )
+    val channel = NotificationChannel(
+      CHANNEL_ID,
+      getString(R.string.connection_channel_name),
+      NotificationManager.IMPORTANCE_LOW
+    )
 
-      getSystemService(NotificationManager::class.java).createNotificationChannel(channel)
-    }
+    getSystemService(NotificationManager::class.java).createNotificationChannel(channel)
 
     val openAppIntent = PendingIntent.getActivity(
       this,
@@ -161,7 +162,42 @@ class ConnectionForegroundService : Service() {
 
         session.udpClient?.send(Protocol.encode("PING"))
 
-        delay(KEEP_ALIVE_INTERVAL_MS)
+        delay(KEEP_ALIVE_INTERVAL_MS.milliseconds)
+      }
+    }
+  }
+
+
+  private fun startListening() {
+    if (readJob?.isActive == true) {
+      return
+    }
+
+    readJob = serviceScope.launch(ioDispatcher) {
+      while (true) {
+        val tcpClient = session.tcpClient ?: break
+
+        try {
+          val line = tcpClient.receiveLine()
+
+          if (line == null) {
+            deviceController.disconnect()
+            stopSelf()
+            break
+          }
+
+          val (type, _) = Protocol.decode(line)
+
+          if (type == "DISCONNECT") {
+            deviceController.disconnect()
+            stopSelf()
+            break
+          }
+        } catch (e: Exception) {
+          deviceController.disconnect()
+          stopSelf()
+          break
+        }
       }
     }
   }
@@ -170,6 +206,7 @@ class ConnectionForegroundService : Service() {
     Log.d(TAG, "onDestroy")
 
     keepAliveJob?.cancel()
+    readJob?.cancel()
     serviceScope.cancel()
 
     super.onDestroy()
