@@ -1,5 +1,4 @@
 package pairro.network
-
 import pairro.network.client.TCPClient
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -28,8 +27,10 @@ class ConnectionSession @Inject constructor() {
   }
 
   fun closeTcpClient() {
-    tcpClient?.close()
+    val client = tcpClient
     tcpClient = null
+
+    client?.close()
   }
 
   fun attachUdpClient(client: UDPClient) {

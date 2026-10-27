@@ -23,6 +23,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import pairro.controller.DeviceController
 import pairro.di.IoDispatcher
+import pairro.network.ConnectionMonitor
 import pairro.network.ConnectionSession
 import pairro.protocol.Protocol
 import pairro.ui.MainActivity
@@ -37,6 +38,9 @@ class ConnectionForegroundService : Service() {
 
   @Inject
   lateinit var deviceController: DeviceController
+
+  @Inject
+  lateinit var connectionMonitor: ConnectionMonitor
 
   @Inject
   @IoDispatcher
@@ -72,8 +76,8 @@ class ConnectionForegroundService : Service() {
       return START_NOT_STICKY
     }
 
+    startListenin()
     startKeepAlive()
-    startListening()
 
     return START_STICKY
   }
@@ -167,38 +171,12 @@ class ConnectionForegroundService : Service() {
     }
   }
 
+  private fun startListenin() {
+    val tcpClient = session.tcpClient ?: return
 
-  private fun startListening() {
-    if (readJob?.isActive == true) {
-      return
-    }
-
-    readJob = serviceScope.launch(ioDispatcher) {
-      while (true) {
-        val tcpClient = session.tcpClient ?: break
-
-        try {
-          val line = tcpClient.receiveLine()
-
-          if (line == null) {
-            deviceController.disconnect()
-            stopSelf()
-            break
-          }
-
-          val (type, _) = Protocol.decode(line)
-
-          if (type == "DISCONNECT") {
-            deviceController.disconnect()
-            stopSelf()
-            break
-          }
-        } catch (e: Exception) {
-          deviceController.disconnect()
-          stopSelf()
-          break
-        }
-      }
+    connectionMonitor.watch(tcpClient) {
+      deviceController.disconnect()
+      stopSelf()
     }
   }
 

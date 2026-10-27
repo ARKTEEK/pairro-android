@@ -17,6 +17,8 @@ import java.net.InetSocketAddress
 import java.net.SocketTimeoutException
 import java.security.SecureRandom
 import java.security.cert.X509Certificate
+import java.util.concurrent.LinkedBlockingQueue
+import java.util.concurrent.TimeUnit
 import javax.net.ssl.SSLContext
 import javax.net.ssl.SSLSocket
 import javax.net.ssl.X509TrustManager
@@ -35,9 +37,15 @@ class TCPClient @AssistedInject constructor(
     ): TCPClient
   }
 
+  private object Closed
+
   private var socket: SSLSocket? = null
   private var writer: BufferedWriter? = null
   private var reader: BufferedReader? = null
+  private val queuedLines = LinkedBlockingQueue<Any>()
+
+  @Volatile
+  private var listening = false
 
   @Throws(IOException::class)
   fun connect(timeoutMs: Int = 5000) {
@@ -68,6 +76,8 @@ class TCPClient @AssistedInject constructor(
     reader = BufferedReader(InputStreamReader(sslSocket.getInputStream()))
   }
 
+
+
   suspend fun send(message: String) {
     withContext(ioDispatcher) {
       val w = writer ?: throw IOException("Not connected")
@@ -91,7 +101,24 @@ class TCPClient @AssistedInject constructor(
     }
   }
 
+  fun startListening(isPushMessage: (String) -> Boolean, onClosed: () -> Unit) {
+    val activeReader = reader ?: throw IOException("Not connected")
+
+    socket?.soTimeout = 0
+    listening = true
+
+    Thread({ readLines(activeReader, isPushMessage, onClosed) }, "tcp-listener").apply {
+      isDaemon = true
+      start()
+    }
+  }
+
+  @Throws(IOException::class)
   fun receiveLine(timeoutMs: Int? = null): String? {
+    if (listening) {
+      return takeQueuedLine(timeoutMs)
+    }
+
     val s = socket ?: throw IOException("Not connected")
 
     if (timeoutMs != null) s.soTimeout = timeoutMs
@@ -105,21 +132,49 @@ class TCPClient @AssistedInject constructor(
 
   fun close() {
     try {
-      socket?.shutdownInput()
-    } catch (_: Exception) {
-    }
-    try {
-      reader?.close()
+      socket?.close()
     } catch (_: Exception) {
     }
     try {
       writer?.close()
     } catch (_: Exception) {
     }
+  }
+
+  private fun readLines(
+    activeReader: BufferedReader,
+    isPushMessage: (String) -> Boolean,
+    onClosed: () -> Unit
+  ) {
     try {
-      socket?.close()
-    } catch (_: Exception) {
+      while (true) {
+        val line = activeReader.readLine() ?: break
+
+        if (!isPushMessage(line)) {
+          queuedLines.offer(line)
+        }
+      }
+    } catch (_: IOException) {
+    } finally {
+      queuedLines.offer(Closed)
+      onClosed()
     }
+  }
+
+  private fun takeQueuedLine(timeoutMs: Int?): String? {
+    val item = if (timeoutMs == null) {
+      queuedLines.take()
+    } else {
+      queuedLines.poll(timeoutMs.toLong(), TimeUnit.MILLISECONDS) ?: throw SocketTimeoutException()
+    }
+
+    if (item === Closed) {
+      queuedLines.offer(Closed)
+
+      return null
+    }
+
+    return item as String
   }
 
   @SuppressLint("CustomX509TrustManager")
